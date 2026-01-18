@@ -1,0 +1,14 @@
+[project]
+name = "accountanthelper"
+version = "0.1.0"
+description = "Local EU Accounting AI Assistant (Czech)"
+readme = "GEMINI.md"
+requires-python = ">=3.14"
+dependencies = [
+    "requests",
+    "lxml",
+    "fastmcp",
+    "chromadb",
+    "streamlit",
+    "ollama",
+]

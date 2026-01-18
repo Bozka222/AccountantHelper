@@ -1,0 +1,19 @@
+# General Python
+__pycache__/
+*.pyc
+.venv/
+.env
+build/
+dist/
+*.egg-info/
+
+# PyCharm / JetBrains
+.idea/
+*.iml
+
+# OS Generated
+.DS_Store
+Thumbs.db
+
+# Project Data
+data/raw/

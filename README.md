@@ -71,6 +71,19 @@ To use AccountantHelper as a "Tool" inside Claude Desktop:
    ```
 3. Restart Claude Desktop. You will see a 🔌 icon indicating the tool is active.
 
+## 🔄 Interface Comparison
+
+The project provides two distinct ways to interact with the accounting standards. Choose the one that best fits your needs:
+
+| Feature | Streamlit Web UI (Production) | Claude Desktop Integration (Development) |
+| :--- | :--- | :--- |
+| **Model Engine** | **Local (Ollama)** - Runs 100% on your machine. | **Cloud (Anthropic)** - Advanced reasoning via Claude. |
+| **Privacy** | **Total Privacy** - No data leaves the device. | Hybrid - Local data access via MCP, cloud processing. |
+| **Connectivity** | **Offline Capable** - Works without internet. | Requires internet connection to Anthropic. |
+| **Logic** | Hardcoded RAG Pipeline for consistency. | "Agentic" - Claude decides when to use tools. |
+| **User Experience** | Tailored Czech dashboard with stats & citations. | General chat interface with tool output. |
+| **Use Case** | Daily work for accountants in a secure environment. | Testing tools, complex reasoning, and debugging. |
+
 ## 📂 Project Structure
 
 - `src/accountant_helper/mcp/`: MCP server and specialized tools (search, calculate, stats).

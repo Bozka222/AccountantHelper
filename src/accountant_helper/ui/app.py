@@ -13,7 +13,7 @@ from src.accountant_helper.mcp.tools.search import search_accounting_standards
 from src.accountant_helper.mcp.tools.stats import count_standards
 
 st.set_page_config(
-    page_title="AccountantHelper - EU Accounting AI Assistant",
+    page_title="Účetní asistent - EU Accounting AI Assistant",
     page_icon="⚖️",
     layout="wide"
 )
@@ -37,7 +37,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-st.title("⚖️ AccountantHelper (Czech)")
+st.title("⚖️ Účetní asistent")
 st.subheader("Místní asistent pro EU účetní standardy (IAS/IFRS)")
 
 # Sidebar
@@ -52,7 +52,7 @@ with st.sidebar:
         st.warning("Nepodařilo se načíst statistiky databáze.")
 
     st.divider()
-    model_name = st.selectbox("Vyberte LLM model (Ollama)", ["llama3.2", "mistral-nemo", "phi3"], index=0)
+    model_name = st.selectbox("Vyberte LLM model (Ollama)", ["llama3.2"], index=0)
     
     if st.button("Vymazat historii chatu"):
         st.session_state.messages = []

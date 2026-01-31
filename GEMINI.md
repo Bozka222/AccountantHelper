@@ -62,7 +62,17 @@ We are building a specialized, privacy-first AI assistant for accountants to ans
 ### Phase 4: UI & Testing
 *   [x] **Connect Claude Desktop:** Configured via `CLAUDE_CONFIG.json`.
 *   [x] **Build Streamlit App:** Local RAG interface implemented in `src/accountant_helper/ui/app.py`.
-*   [ ] **Testing:** Full integration testing with Ollama.
+*   [ ] **Testing & Quality Assurance:**
+    *   [ ] **Unit Tests:** Implement comprehensive unit tests for tools and data pipeline logic.
+    *   [ ] **Integration Tests:** End-to-end testing of the RAG pipeline with Ollama.
+    *   [ ] **Prompt Engineering:** Refine and upgrade the master prompt for the `llama` family of models to improve Czech reasoning.
+
+### Phase 5: Future Enhancements
+*   [ ] **Data Quality:** Fix XML text spacing and formatting issues in the ingestion pipeline.
+*   [ ] **UI Upgrades:** Implement chat history persistence in the Streamlit interface.
+*   [ ] **Infrastructure:**
+    *   [ ] **Dockerization:** Create a Dockerized version for consistent local deployment.
+    *   [ ] **Deployment Research:** Investigate strategies for "Private Cloud" or secure local server deployment for accounting firms.
 
 ---
 ## Progress Log

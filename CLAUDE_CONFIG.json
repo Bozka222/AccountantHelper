@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "accountant-helper": {
+      "command": "C:\\Users\\bochj\\.local\\bin\\uv.exe",
+      "args": [
+        "--directory",
+        "D:\\Projects\\PythonProjects\\AccountantHelper",
+        "run",
+        "python",
+        "-m",
+        "src.accountant_helper.mcp.server"
+      ]
+    }
+  }
+}

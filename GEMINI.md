@@ -59,9 +59,10 @@ We are building a specialized, privacy-first AI assistant for accountants to ans
     *   `count_standards`: Reports database size.
     *   `get_citation`: Targeted citation lookup using standard names and paragraph numbers.
 
-### Phase 4: UI & Testing (Current)
-*   [ ] Connect Claude Desktop.
-*   [ ] Build Streamlit App.
+### Phase 4: UI & Testing
+*   [x] **Connect Claude Desktop:** Configured via `CLAUDE_CONFIG.json`.
+*   [x] **Build Streamlit App:** Local RAG interface implemented in `src/accountant_helper/ui/app.py`.
+*   [ ] **Testing:** Full integration testing with Ollama.
 
 ---
 ## Progress Log

@@ -7,10 +7,10 @@ from src.accountant_helper.mcp.tools.citation import get_citation
 mcp = FastMCP("AccountantHelper")
 
 # Register tools
-mcp.add_tool(search_accounting_standards)
-mcp.add_tool(calculate_accounting_formula)
-mcp.add_tool(count_standards)
-mcp.add_tool(get_citation)
+mcp.tool()(search_accounting_standards)
+mcp.tool()(calculate_accounting_formula)
+mcp.tool()(count_standards)
+mcp.tool()(get_citation)
 
 if __name__ == "__main__":
     mcp.run()

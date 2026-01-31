@@ -32,8 +32,12 @@ We are building a specialized, privacy-first AI assistant for accountants to ans
 *   [x] **Fetch:** Script to download consolidated XML from EUR-Lex.
     *   *Status:* `src/accountant_helper/data_pipeline/fetcher.py` works.
     *   *Result:* `data/raw/CL2023R1803CS0050020.0001.xml` (Czech).
-*   [ ] **Parse:** Extract `ARTICLE` blocks from Formex XML.
-*   [ ] **Clean:** Pre-process text for embedding.
+*   [x] **Parse:** Extract `ARTICLE` blocks from Formex XML.
+    *   *Status:* `src/accountant_helper/data_pipeline/parser.py` implemented using `lxml`.
+    *   *Result:* `data/processed/parsed_data.json` (10,779 items: 5 Articles, 10,774 Paragraphs).
+*   [x] **Clean:** Pre-process text for embedding (Chunking/Cleaning).
+    *   *Status:* `src/accountant_helper/data_pipeline/cleaner.py` implemented.
+    *   *Result:* `data/processed/cleaned_data.json` (Whitespace normalized, numbers separated, `text_to_embed` field created).
 
 ### Phase 2: Vector Storage
 *   [ ] Setup ChromaDB.
@@ -51,9 +55,24 @@ We are building a specialized, privacy-first AI assistant for accountants to ans
 ---
 ## Progress Log
 
+### 2026-01-31
+*   **Parser:** Implemented `src/accountant_helper/data_pipeline/parser.py`.
+    *   Parsed the 4.4MB XML file using `lxml` DOM.
+    *   Successfully extracted:
+        *   **Regulation Articles:** 5 main articles from `ENACTING.TERMS`.
+        *   **Standard Paragraphs:** ~10.7k paragraphs from `CONS.ANNEX`.
+    *   Preserved hierarchy context (e.g., "IAS 1 > Scope") for RAG metadata.
+    *   Verified UTF-8 encoding integrity.
+    *   Output: `data/processed/parsed_data.json`.
+*   **Cleaner:** Implemented `src/accountant_helper/data_pipeline/cleaner.py`.
+    *   Normalized whitespace.
+    *   Separated paragraph numbers/headings from body text.
+    *   Created `text_to_embed` combining hierarchy context and content.
+    *   Output: `data/processed/cleaned_data.json`.
+
 ### 2026-01-18
 *   **Environment:** Initialized with `uv`. Dependencies: `requests`, `lxml`.
 *   **Fetcher:** Refactored `fetcher.py`.
-    *   Successfully downloaded Czech consolidated version (2025-07-30).
+    *   Successfully downloaded consolidated version (2025-07-30).
     *   Target File: `data/raw/CL2023R1803CS0050020.0001.xml`.
 *   **Next:** Parse the XML to split into Articles.

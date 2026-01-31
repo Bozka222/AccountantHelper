@@ -3,12 +3,15 @@ name = "accountanthelper"
 version = "0.1.0"
 description = "Local EU Accounting AI Assistant (Czech)"
 readme = "GEMINI.md"
-requires-python = ">=3.14"
+requires-python = ">=3.13"
 dependencies = [
     "requests",
     "lxml",
-    "fastmcp",
-    "chromadb",
-    "streamlit",
+    "fastmcp==2.14.4",
+    "chromadb>=1.4.1",
+    "streamlit==1.53.1",
     "ollama",
+    "sentence-transformers==5.2.2",
+    "tqdm==4.67.2",
+    "pydantic-settings>=2.12.0",
 ]

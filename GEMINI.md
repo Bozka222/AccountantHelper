@@ -39,10 +39,12 @@ We are building a specialized, privacy-first AI assistant for accountants to ans
     *   *Status:* `src/accountant_helper/data_pipeline/cleaner.py` implemented.
     *   *Result:* `data/processed/cleaned_data.json` (Whitespace normalized, numbers separated, `text_to_embed` field created).
 
-### Phase 2: Vector Storage
-*   [ ] Setup ChromaDB.
-*   [ ] Embed articles with metadata.
-*   [ ] Create verbatim text store (JSON/SQLite).
+### Phase 2: Vector Storage (Current)
+*   [x] **Setup ChromaDB:** Installed and configured with `paraphrase-multilingual-MiniLM-L12-v2`.
+*   [x] **Embed data:** Ingested 10,779 items (Articles & Paragraphs).
+    *   *Status:* Ingestion script `src/accountant_helper/vector_store/ingest.py` completed.
+    *   *Result:* Persistent database in `data/vector_db`.
+*   [x] **Verbatim store:** Metadata in ChromaDB includes full verbatim text for retrieval.
 
 ### Phase 3: MCP Server
 *   [ ] Initialize `fastmcp`.
@@ -56,19 +58,13 @@ We are building a specialized, privacy-first AI assistant for accountants to ans
 ## Progress Log
 
 ### 2026-01-31
-*   **Parser:** Implemented `src/accountant_helper/data_pipeline/parser.py`.
-    *   Parsed the 4.4MB XML file using `lxml` DOM.
-    *   Successfully extracted:
-        *   **Regulation Articles:** 5 main articles from `ENACTING.TERMS`.
-        *   **Standard Paragraphs:** ~10.7k paragraphs from `CONS.ANNEX`.
-    *   Preserved hierarchy context (e.g., "IAS 1 > Scope") for RAG metadata.
-    *   Verified UTF-8 encoding integrity.
-    *   Output: `data/processed/parsed_data.json`.
-*   **Cleaner:** Implemented `src/accountant_helper/data_pipeline/cleaner.py`.
-    *   Normalized whitespace.
-    *   Separated paragraph numbers/headings from body text.
-    *   Created `text_to_embed` combining hierarchy context and content.
-    *   Output: `data/processed/cleaned_data.json`.
+*   **Vector Store:**
+    *   Switched Python version to **3.13** to ensure compatibility with `chromadb` and `onnxruntime`.
+    *   Implemented `src/accountant_helper/vector_store/ingest.py`.
+    *   Used `paraphrase-multilingual-MiniLM-L12-v2` (multilingual, supports Czech).
+    *   Ingested 10,779 chunks into a persistent ChromaDB collection.
+    *   Verified search functionality with `src/accountant_helper/vector_store/search.py`.
+*   **Parser & Cleaner:** (Previous entries...)
 
 ### 2026-01-18
 *   **Environment:** Initialized with `uv`. Dependencies: `requests`, `lxml`.

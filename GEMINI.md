@@ -27,8 +27,8 @@ We are building a specialized, privacy-first AI assistant for accountants to ans
 
 ## 5. Implementation Roadmap
 
-### Phase 1: Data Pipeline (Current)
-*   [x] **Setup:** Environment (`uv`, Python 3.14) and structure.
+### Phase 1: Data Pipeline
+*   [x] **Setup:** Environment (`uv`, Python 3.13) and structure.
 *   [x] **Fetch:** Script to download consolidated XML from EUR-Lex.
     *   *Status:* `src/accountant_helper/data_pipeline/fetcher.py` works.
     *   *Result:* `data/raw/CL2023R1803CS0050020.0001.xml` (Czech).
@@ -39,7 +39,7 @@ We are building a specialized, privacy-first AI assistant for accountants to ans
     *   *Status:* `src/accountant_helper/data_pipeline/cleaner.py` implemented.
     *   *Result:* `data/processed/cleaned_data.json` (Whitespace normalized, numbers separated, `text_to_embed` field created).
 
-### Phase 2: Vector Storage (Current)
+### Phase 2: Vector Storage
 *   [x] **Setup ChromaDB:** Installed and configured with `paraphrase-multilingual-MiniLM-L12-v2`.
 *   [x] **Embed data:** Ingested 10,779 items (Articles & Paragraphs).
     *   *Status:* Ingestion script `src/accountant_helper/vector_store/ingest.py` completed.
@@ -47,10 +47,19 @@ We are building a specialized, privacy-first AI assistant for accountants to ans
 *   [x] **Verbatim store:** Metadata in ChromaDB includes full verbatim text for retrieval.
 
 ### Phase 3: MCP Server
-*   [ ] Initialize `fastmcp`.
-*   [ ] Implement tools (`search`, `cite`, `calculate`).
+*   [x] **Initialize `fastmcp`:** Created `src/accountant_helper/mcp/server.py`.
+*   [x] **Modular Architecture:** Refactored tools into separate modules for maintainability.
+    *   `src/accountant_helper/mcp/tools/search.py`: Semantic search.
+    *   `src/accountant_helper/mcp/tools/calculate.py`: Precision math.
+    *   `src/accountant_helper/mcp/tools/stats.py`: Database statistics.
+    *   `src/accountant_helper/mcp/tools/citation.py`: Specific citation retrieval with metadata filtering.
+*   [x] **Implement tools:**
+    *   `search_accounting_standards`: Semantic search in Czech standards.
+    *   `calculate_accounting_formula`: Deterministic Python-based math tool.
+    *   `count_standards`: Reports database size.
+    *   `get_citation`: Targeted citation lookup using standard names and paragraph numbers.
 
-### Phase 4: UI & Testing
+### Phase 4: UI & Testing (Current)
 *   [ ] Connect Claude Desktop.
 *   [ ] Build Streamlit App.
 
@@ -58,13 +67,14 @@ We are building a specialized, privacy-first AI assistant for accountants to ans
 ## Progress Log
 
 ### 2026-01-31
-*   **Vector Store:**
-    *   Switched Python version to **3.13** to ensure compatibility with `chromadb` and `onnxruntime`.
-    *   Implemented `src/accountant_helper/vector_store/ingest.py`.
-    *   Used `paraphrase-multilingual-MiniLM-L12-v2` (multilingual, supports Czech).
-    *   Ingested 10,779 chunks into a persistent ChromaDB collection.
-    *   Verified search functionality with `src/accountant_helper/vector_store/search.py`.
-*   **Parser & Cleaner:** (Previous entries...)
+*   **MCP Server Refactoring & New Tools:**
+    *   **Modular Refactor:** Restructured the MCP server into a package (`src/accountant_helper/mcp`) with subdirectories for `tools` and `utils`.
+    *   **Citation Tool:** Added `get_citation` which supports metadata filtering (e.g., specific paragraph numbers) to improve RAG precision.
+    *   **Stats Tool:** Added `count_standards` to monitor the vector database size (currently 10,779 items).
+    *   **Bug Fixes:** Resolved a set-dictionary hashability error in the calculation tool and corrected import paths across modular tools.
+    *   **Verification:** All tools (search, calculate, stats, citation) verified via `test_mcp_refactor.py`.
+*   **Vector Store & Path Handling:**
+    *   (Existing entries...)
 
 ### 2026-01-18
 *   **Environment:** Initialized with `uv`. Dependencies: `requests`, `lxml`.

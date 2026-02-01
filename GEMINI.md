@@ -1,113 +1,94 @@
-# Project: Local EU Accounting AI Assistant (Czech)
+# Project: Local EU Accounting AI Assistant (Czech) – Neural Retrieval Pivot
 
-## 1. Project Overview
+## 1. Project Overview & Pivot Strategy
 We are building a specialized, privacy-first AI assistant for accountants to answer queries regarding EU accounting regulations in **Czech**.
 
-**Crucial Requirement:** The AI must use *only* provided legal documentation (RAG). Zero hallucinations. Answers must be traceable to specific legal articles with verbatim citations.
+**Strategic Pivot (Feb 2026):** We are moving away from relying solely on Generative LLMs (Generative AI) for answers due to the risk of hallucination and lack of strict adherence to complex legal structures.
+
+**New Direction:** We are adopting a **Neural Information Retrieval (IR)** architecture. The system will function less like a "creative chatbot" and more like an "intelligent search engine" that understands intent.
+1.  **Router (SetFit):** Classifies queries into specific Accounting Standards (e.g., "IAS 16", "IFRS 9") or "Off-Topic".
+2.  **Reranker (Cross-Encoder):** Re-evaluates vector search results to find the single best matching paragraph with high precision.
+3.  **Deterministic Output:** The primary output is the *exact* legal text, highlighted and ranked, rather than a generated summary.
 
 ## 2. Core Constraints
-1.  **Local Execution:** LLM (Ollama) and Vector DB (Chroma) run locally. No data leaves the machine.
-2.  **Zero Hallucination:** "I don't know" > Guessing.
-3.  **Verbatim Citations:** Exact legal text must be retrievable.
-4.  **Deterministic Math:** Python handles calculations, not the LLM.
+1.  **Local Execution:** All models (SetFit, Cross-Encoders, Vector DB) run locally.
+2.  **Zero Hallucination:** The system extracts and ranks existing text; it does not generate new legal advice.
+3.  **Precision over Creativity:** We prefer "No result found" over a low-confidence guess.
+4.  **Deterministic Math:** Python handles calculations.
 5.  **Language:** **Czech (CES)**.
 
 ## 3. Tech Stack
-*   **LLM:** Ollama (e.g., llama3.2, mistral-nemo).
-*   **Orchestration:** Python MCP Server (`fastmcp`).
-*   **RAG:** ChromaDB (local).
-*   **Ingestion:** Python scripts (EUR-Lex API -> XML -> Chunking).
-*   **UI:** Claude Desktop (dev), Streamlit (prod).
+* **Retrieval Engine:** ChromaDB (Vector Search).
+* **Router/Classifier:** **SetFit** (Sentence Transformer Fine-tuning) – trained on custom accounting intent data.
+* **Reranker:** **Cross-Encoder** (e.g., `cross-encoder/ms-marco-MiniLM-L-6-v2` or multilingual variant).
+* **Orchestration:** Python (replacing/augmenting MCP with direct inference pipelines).
+* **Ingestion:** Python scripts (EUR-Lex API -> XML -> Chunking).
+* **UI:** Streamlit (Search Engine Interface).
 
 ## 4. Data Source
-*   **Document:** Commission Regulation (EU) 2023/1803 (International Accounting Standards).
-*   **CELEX ID:** `02023R1803` (Consolidated).
-*   **Format:** XML (Formex).
-*   **Language:** Czech (`CES`).
+* **Document:** Commission Regulation (EU) 2023/1803 (International Accounting Standards).
+* **CELEX ID:** `02023R1803` (Consolidated).
+* **Format:** XML (Formex).
+* **Language:** Czech (`CES`).
 
 ## 5. Implementation Roadmap
 
-### Phase 1: Data Pipeline
-*   [x] **Setup:** Environment (`uv`, Python 3.13) and structure.
-*   [x] **Fetch:** Script to download consolidated XML from EUR-Lex.
-    *   *Status:* `src/accountant_helper/data_pipeline/fetcher.py` works.
-    *   *Result:* `data/raw/CL2023R1803CS0050020.0001.xml` (Czech).
-*   [x] **Parse:** Extract `ARTICLE` blocks from Formex XML.
-    *   *Status:* `src/accountant_helper/data_pipeline/parser.py` implemented using `lxml`.
-    *   *Result:* `data/processed/parsed_data.json` (10,779 items: 5 Articles, 10,774 Paragraphs).
-*   [x] **Clean:** Pre-process text for embedding (Chunking/Cleaning).
-    *   *Status:* `src/accountant_helper/data_pipeline/cleaner.py` implemented.
-    *   *Result:* `data/processed/cleaned_data.json` (Whitespace normalized, numbers separated, `text_to_embed` field created).
+### Phase 1: Data Pipeline (Foundational - Completed)
+* [x] **Setup:** Environment (`uv`, Python 3.13).
+* [x] **Fetch:** Download consolidated XML from EUR-Lex (`02023R1803`).
+* [x] **Parse:** Extract `ARTICLE` blocks from Formex XML.
+* [x] **Clean:** Pre-process text (Whitespace normalization, metadata extraction).
+    * *Result:* `data/processed/cleaned_data.json`.
 
-### Phase 2: Vector Storage
-*   [x] **Setup ChromaDB:** Installed and configured with `paraphrase-multilingual-MiniLM-L12-v2`.
-*   [x] **Embed data:** Ingested 10,779 items (Articles & Paragraphs).
-    *   *Status:* Ingestion script `src/accountant_helper/vector_store/ingest.py` completed.
-    *   *Result:* Persistent database in `data/vector_db`.
-*   [x] **Verbatim store:** Metadata in ChromaDB includes full verbatim text for retrieval.
+### Phase 2: Vector Storage (Foundational - Completed)
+* [x] **Setup ChromaDB:** `paraphrase-multilingual-MiniLM-L12-v2`.
+* [x] **Embed data:** Ingested 10,779 items with metadata (`article_number`, `ref_id`).
+* [x] **Unique IDs:** Implemented collision-free IDs (e.g., `REG:5`, `STD:IAS 23:5`).
 
-### Phase 3: MCP Server
-*   [x] **Initialize `fastmcp`:** Created `src/accountant_helper/mcp/server.py`.
-*   [x] **Modular Architecture:** Refactored tools into separate modules for maintainability.
-    *   `src/accountant_helper/mcp/tools/search.py`: Semantic search.
-    *   `src/accountant_helper/mcp/tools/calculate.py`: Precision math.
-    *   `src/accountant_helper/mcp/tools/stats.py`: Database statistics.
-    *   `src/accountant_helper/mcp/tools/citation.py`: Specific citation retrieval with metadata filtering.
-*   [x] **Implement tools:**
-    *   `search_accounting_standards`: Semantic search in Czech standards.
-    *   `calculate_accounting_formula`: Deterministic Python-based math tool.
-    *   `count_standards`: Reports database size.
-    *   `get_citation`: Targeted citation lookup using standard names and paragraph numbers.
+### Phase 3: Dataset Creation for "Neural Pivot" (New - High Priority)
+* **Goal:** Create a labelled dataset to train the SetFit Router.
+* **Steps:**
+    1.  Create a CSV schema: `query`, `label` (e.g., "IAS 16", "IFRS 9", "OFF_TOPIC").
+    2.  Generate synthetic training data: Use the LLM (Ollama) one last time to generate 10-20 distinct questions for each major Accounting Standard based on the parsed XML.
+    3.  Manually review and clean the dataset to ensure ground truth.
 
-### Phase 4: UI & Core Refinement
-*   [x] **Connect Claude Desktop:** Configured via `CLAUDE_CONFIG.json`.
-*   [x] **Build Streamlit App:** Local RAG interface implemented in `src/accountant_helper/ui/app.py`.
-*   [x] **Citation Injection:** Implemented "Reference-Only" injection.
-*   [x] **Unique Citation IDs:** Resolved ID collisions between Regulation articles and Standard paragraphs by implementing prefixed IDs (e.g., `REG:5`, `STD:IAS 23:5`).
-*   [x] **Prompt Engineering:** Refined and upgraded the master prompt for the `llama` family of models to improve Czech reasoning and citation accuracy.
+### Phase 4: Training the SetFit Router (New)
+* **Goal:** Train a small, fast model to route queries to the correct standard or reject them.
+* **Steps:**
+    1.  Install `setfit` and `sentence-transformers`.
+    2.  Train a SetFit model on the dataset from Phase 3.
+    3.  Evaluate accuracy on a hold-out test set.
+    4.  Save the model locally (`models/setfit_router`).
 
-### Phase 5: Future Enhancements
-*   [x] **Data Quality:** Fixed XML text spacing and formatting issues in the ingestion pipeline.
-*   [ ] **UI Upgrades:** Implement chat history persistence in the Streamlit interface.
-*   [ ] **Infrastructure:**
-    *   [ ] **Dockerization:** Create a Dockerized version for consistent local deployment.
-    *   [ ] **Deployment Research:** Investigate strategies for "Private Cloud" or secure local server deployment for accounting firms.
+### Phase 5: Implementing the Cross-Encoder Reranker (New)
+* **Goal:** Filter the top 20 ChromaDB results down to the "Gold Standard" answer.
+* **Steps:**
+    1.  Integrate a Cross-Encoder model (`sentence-transformers/CrossEncoder`).
+    2.  Create a pipeline: `Query -> ChromaDB (Top 20) -> Cross-Encoder -> Top 3`.
+    3.  Benchmark precision against the previous pure-Vector approach.
 
-### Phase 6: Testing & Quality Assurance (Final Phase)
-*   [ ] **Unit Tests:** Implement comprehensive unit tests for tools and data pipeline logic.
-*   [ ] **Integration Tests:** End-to-end testing of the RAG pipeline with Ollama.
+### Phase 6: The "Search Engine" UI (UI Pivot)
+* **Goal:** Move away from "Chat" to "Search".
+* **Steps:**
+    1.  Refactor Streamlit app to look like a search engine.
+    2.  Display results as: **Standard Name** | **Relevance Score** | **Snippet**.
+    3.  Implement "Expand to read full text" logic using the Verbatim Store.
 
 ---
 ## Progress Log
 
-### 2026-02-01
-*   **Feature: Unique Reference IDs & Collision Fix:**
-    *   **Issue:** Collisions between "Článek 5" of the Regulation and "Odstavec 5" of specific Standards.
-    *   **Fix:** Refactored `parser.py` to generate unique `ref_id` strings (e.g., `REG:5` for Regulation, `STD:IAS 23:5` for Standards).
-    *   **Cleanup:** Implemented automatic abbreviation of standard names (e.g., "MEZINÁRODNÍ ÚČETNÍ STANDARD 1" -> "IAS 1").
-    *   **LLM Context:** Updated `cleaner.py` to inject `[SOURCE_ID: ...]` directly into the context passed to the LLM.
-    *   **Robust Retrieval:** Updated `citation.py` to perform exact metadata lookups on the new `ref_id` field.
-*   **Feature: Reference-Only Citation Injection:**
-    *   **Goal:** Eliminate legal hallucinations by preventing the LLM from writing citation text.
-    *   **Implementation:** LLM now outputs `[[REF:ID]]` tags. Python backend (Streamlit) scans for these tags and injects verbatim text from ChromaDB using a new `get_verbatim_article` tool.
-    *   **Metadata Upgrade:** Updated `parser.py` and `cleaner.py` to extract and index `article_number` (e.g., "Článek 5").
-    *   **Database Refresh:** Successfully re-ingested 10.7k items with the new metadata schema.
-    *   **UI Update:** Added professional CSS styling for injected citations using a dedicated `citation-box` info block.
+### 2026-02-01 [Strategic Pivot]
+* **Decision:** Shifted strategy from Generative RAG to **Neural Information Retrieval**.
+* **Reasoning:** Generative models proved too unstable for strict legal/accounting compliance (hallucination risk, formatting inconsistency).
+* **Action:**
+    * Defined new architecture: SetFit Router + Cross-Encoder Reranking.
+    * Deprecated "Chatbot" persona in favor of "Intelligent Search" persona.
+    * Added Phases 3-6 to build the discriminative model pipeline.
 
 ### 2026-02-01
-*   **Citation & Formatting Fixes:**
-    *   **Robust Citation Retrieval:** Fixed `IndexError: list index out of range` in `get_verbatim_text` by adding robust checks for empty result sets from ChromaDB.
-    *   **Context Injection Fix:** Updated `search_accounting_standards` to explicitly include `[SOURCE_ID: ref_id]` in the context returned to the LLM.
-    *   **XML Parser Spacing:** Improved `parser.py` to preserve spaces between XML elements using `get_text_with_spaces`.
-    *   **Citation Cleaning:** Modified `get_verbatim_text` to automatically strip leading paragraph/article numbers (e.g., "14 ", "Článek 5 ") from the verbatim text, as they are already shown in the citation header.
-    *   **UI De-duplication:** Refined the master prompt in `app.py` to ensure `[[REF:ID]]` tags appear only in the "Doslovná citace" section, keeping the main "Odpověď" section clean and readable.
-    *   **Data Refresh:** Re-parsed and re-ingested the entire database (10,779 records) to apply all formatting improvements.
-
-### 2026-01-31
-
-### 2026-01-18
-*   **Environment:** Initialized with `uv`. Dependencies: `requests`, `lxml`.
-*   **Fetcher:** Refactored `fetcher.py`.
-    *   Successfully downloaded consolidated version (2025-07-30).
-    *   Target File: `data/raw/CL2023R1803CS0050020.0001.xml`.
-*   **Next:** Parse the XML to split into Articles.
+* **Feature: Reference-Only Citation Injection (Completed):**
+    * Successfully implemented logic where LLM outputs `[[REF:ID]]` and Python injects text.
+    * *Note:* This logic remains useful for the "Snippet Display" in the new Search UI.
+* **Data Cleanup:**
+    * Fixed XML parsing issues (spacing).
+    * Re-ingested 10.7k items with unique `ref_id`.

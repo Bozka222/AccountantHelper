@@ -7,10 +7,10 @@ def get_text_with_spaces(element):
     if element is None:
         return ""
     # Use lxml's method to get all text nodes and join them
-    # We strip each part and join with space, but only if they are not empty.
-    # Actually, a simpler way is to use xpath to get all text nodes.
     text_parts = element.xpath('.//text()')
-    return " ".join(part.strip() for part in text_parts if part.strip())
+    # Normalize spaces: join parts and replace non-breaking spaces with normal spaces
+    full_text = " ".join(part.strip() for part in text_parts if part.strip())
+    return full_text.replace("\u00a0", " ")
 
 def parse_xml_dom(file_path, output_path):
     print(f"Parsing {file_path} using DOM...")

@@ -13,21 +13,36 @@ def get_verbatim_text(ref_id: str) -> str:
     try:
         collection = get_collection()
         
-        # 1. Try exact match on ref_id in metadata
-        search_ref = ref_id.strip()
+        # 1. Normalize the requested ref_id (handle spaces)
+        search_ref = ref_id.strip().replace(" ", "\u00a0") # Try with NBSP first
         
         results = collection.get(
             where={"ref_id": search_ref},
             limit=1
         )
         
+        # 2. Try with normal space if NBSP failed
         if not results or not results['ids'] or len(results['ids']) == 0:
-             # Fallback: Try a semantic query in case the ID was slightly misformatted by LLM
-             # but we really want to encourage exact IDs.
+            search_ref = ref_id.strip().replace("\u00a0", " ")
+            results = collection.get(
+                where={"ref_id": search_ref},
+                limit=1
+            )
+
+        # 3. Handle sub-paragraphs missing closing parenthesis (e.g., "IAS 12:b" -> "IAS 12:b)")
+        if (not results or not results['ids'] or len(results['ids']) == 0) and ":" in ref_id:
+            if not ref_id.endswith(")"):
+                search_ref = f"{ref_id.strip()})"
+                results = collection.get(
+                    where={"ref_id": search_ref},
+                    limit=1
+                )
+
+        # 4. Fallback: Semantic query
+        if not results or not results['ids'] or len(results['ids']) == 0:
              results = collection.query(
-                query_texts=[search_ref],
-                n_results=1,
-                where={"ref_id": search_ref} # Still filter by ref_id if possible
+                query_texts=[ref_id],
+                n_results=1
              )
 
         if not results or not results['ids'] or (isinstance(results['ids'], list) and len(results['ids']) == 0) or (isinstance(results['ids'][0], list) and len(results['ids'][0]) == 0):
@@ -39,27 +54,28 @@ def get_verbatim_text(ref_id: str) -> str:
             return f"Lituji, ale referenční kód '{ref_id}' nebyl v databázi nalezen."
 
         if isinstance(metadatas[0], list):
-            if len(metadatas[0]) == 0:
-                return f"Lituji, ale referenční kód '{ref_id}' nebyl v databázi nalezen."
             meta = metadatas[0][0]
         else:
             meta = metadatas[0]
 
         content = meta.get('content_verbatim', 'Obsah není k dispozici.')
         
-        # Strip leading paragraph number or article title if it exists
-        # Regulation: "Článek 1 Text..." -> "Text..."
-        # Standard: "1 Text..." -> "Text..."
-        article_num = meta.get('article_number', '').strip()
-        paragraph_num = meta.get('paragraph_number', '').strip()
+        # --- Robust Number Stripping ---
+        # Normalize both content and number for comparison (replace NBSP with normal space)
+        content_norm = content.replace("\u00a0", " ").strip()
+        article_num = meta.get('article_number', '').replace("\u00a0", " ").strip()
+        paragraph_num = meta.get('paragraph_number', '').replace("\u00a0", " ").strip()
         
-        if article_num and content.startswith(article_num):
-            content = content[len(article_num):].strip()
-        elif paragraph_num and content.startswith(paragraph_num):
-            # Ensure we don't accidentally strip "10" when paragraph is "1"
-            # We check if the character after the number is a space or start of text
-            if len(content) == len(paragraph_num) or content[len(paragraph_num)] == ' ':
-                content = content[len(paragraph_num):].strip()
+        if article_num and content_norm.startswith(article_num):
+            # Find how many characters to strip from ORIGINAL content
+            # We match the length but must be careful with encoding
+            content = content[len(meta.get('article_number', '')):].strip()
+        elif paragraph_num and content_norm.startswith(paragraph_num):
+            # Check for space after the number in normalized text
+            match_len = len(paragraph_num)
+            if len(content_norm) == match_len or content_norm[match_len] == ' ':
+                # Strip from original content using original paragraph_number length
+                content = content[len(meta.get('paragraph_number', '')):].strip()
         
         return content
 

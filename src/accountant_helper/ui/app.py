@@ -131,29 +131,29 @@ if prompt := st.chat_input("Zadejte svůj dotaz ohledně účetnictví..."):
         raw_results = search_accounting_standards(prompt, n_results=5)
         
         # 2. Construct RAG prompt with the refined master prompt
-        master_prompt = f"""Jste špičkový expert na evropské účetní standardy (zejména nařízení 2023/1803).
-Vaším úkolem je poskytovat přesné, právně podložené odpovědi v češtině.
+        master_prompt = f"""Jste profesionální český asistent specializovaný na účetní standardy.
+KOMUNIKUJTE VÝHRADNĚ V ČEŠTINĚ. Je přísně zakázáno používat polská, anglická nebo jiná cizí slova (např. 'Odpowiedź', 'цих', 'these').
 
-STRIKTNÍ PRAVIDLA PRO CITACE:
-1. Odpovídejte POUZE na základě poskytnutého KONTEXTU. 
-2. V sekci '### 1. Odpověď' uveďte srozumitelný výklad v češtině. ZDE NEPOUŽÍVEJTE značky [[REF:SOURCE_ID]].
-3. Všechny relevantní značky [[REF:SOURCE_ID]] uveďte VÝHRADNĚ v sekci '### 2. Doslovná citace ze zdroje'. Každou citaci uveďte na samostatném řádku.
-4. SOURCE_ID naleznete v KONTEXTU u každého úryvku označené jako [SOURCE_ID: ...].
-   - Příklad: Pokud vidíte [SOURCE_ID: STD:IAS 23:5], použijte přesně [[REF:STD:IAS 23:5]].
-5. NIKDY si SOURCE_ID nevymýšlejte ani neupravujte. Nepřidávejte k nim žádný text ani popisky uvnitř značek.
-6. Pokud v kontextu chybí odpověď, poctivě přiznejte: "Lituji, ale v mých podkladech jsem tuto informaci nenalezl."
+### PRAVIDLA PRO RELEVANTNÍ DOTAZY:
+1. Odpovídejte POUZE na základě KONTEXTU. Pokud tam odpověď není, řekněte to.
+2. Dodržujte STRIKTNĚ níže uvedenou strukturu s nadpisy začínajícími na ###.
+3. V sekci '### 1. Odpověď' nepoužívejte žádné značky [[REF:ID]].
+4. Všechny značky [[REF:SOURCE_ID]] uveďte VÝHRADNĚ v sekci '### 2. Doslovná citace ze zdroje'.
+5. SOURCE_ID získáte z KONTEXTU (např. z [SOURCE_ID: STD:IAS 23:5] vytvořte [[REF:STD:IAS 23:5]]).
 
-STRUKTURA ODPOVĚDI:
+### PRAVIDLA PRO OFF-TOPIC DOTAZY:
+- Pokud se dotaz NETÝKÁ účetnictví (např. sport, Michael Jordan), odpovězte POUZE: "Omlouvám se, ale jsem specializovaný asistent pro účetní standardy. Na dotazy mimo toto téma nemohu odpovídat."
 
+### POŽADOVANÁ STRUKTURA:
 ### 1. Odpověď
-(Váš výklad v češtině.)
+(Váš srozumitelný český výklad.)
 
 ### 2. Doslovná citace ze zdroje
 [[REF:SOURCE_ID_1]]
 [[REF:SOURCE_ID_2]]
 
 ### 3. Související články a normy
-(Seznam ID, např. STD:IAS 23:1, REG:5, bez dalšího doprovodného textu.)
+(Seznam ID, např. STD:IAS 23:1, REG:5)
 
 ---
 KONTEXT:
@@ -167,10 +167,11 @@ ODPOVĚĎ:"""
         full_response = ""
         
         try:
-            # 3. Call Ollama
+            # 3. Call Ollama with temperature 0 for consistency
             response = ollama.chat(
                 model=model_name,
                 messages=[{'role': 'user', 'content': master_prompt}],
+                options={'temperature': 0},
                 stream=True,
             )
             
@@ -178,15 +179,22 @@ ODPOVĚĎ:"""
                 full_response += chunk['message']['content']
                 message_placeholder.markdown(full_response + "▌", unsafe_allow_html=True)
             
-            # 4. Injection Step
-            final_response, refs = inject_verbatim_citations(full_response)
-            message_placeholder.markdown(final_response, unsafe_allow_html=True)
+            # 4. Injection Step & Conditional Rendering
+            # Check if it's an off-topic refusal (more robust check)
+            if "Omlouvám se" in full_response and ("specializovaný asistent" in full_response or "mimo toto téma" in full_response):
+                # If it's a refusal, we want a clean output without any RAG headers
+                final_response = full_response.split("###")[0].strip() 
+                message_placeholder.markdown(final_response)
+            else:
+                final_response, refs = inject_verbatim_citations(full_response)
+                message_placeholder.markdown(final_response, unsafe_allow_html=True)
+            
             full_response = final_response # For history
 
             # Show citations in an expander
             with st.expander("Použité zdroje a citace (Kontext pro RAG)"):
                 st.markdown(raw_results)
-                
+
         except Exception as e:
             error_msg = f"Chyba při komunikaci s Ollama: {str(e)}"
             if "ConnectionError" in str(e) or "11434" in str(e):

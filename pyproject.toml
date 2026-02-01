@@ -14,4 +14,5 @@ dependencies = [
     "sentence-transformers==5.2.2",
     "tqdm==4.67.2",
     "pydantic-settings>=2.12.0",
+    "setfit>=1.1.3",
 ]

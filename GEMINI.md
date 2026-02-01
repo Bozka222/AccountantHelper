@@ -45,20 +45,22 @@ We are building a specialized, privacy-first AI assistant for accountants to ans
 * [x] **Embed data:** Ingested 10,779 items with metadata (`article_number`, `ref_id`).
 * [x] **Unique IDs:** Implemented collision-free IDs (e.g., `REG:5`, `STD:IAS 23:5`).
 
-### Phase 3: Dataset Creation for "Neural Pivot" (New - High Priority)
+### Phase 3: Dataset Creation for "Neural Pivot" (In Progress)
 * **Goal:** Create a labelled dataset to train the SetFit Router.
 * **Steps:**
-    1.  Create a CSV schema: `query`, `label` (e.g., "IAS 16", "IFRS 9", "OFF_TOPIC").
-    2.  Generate synthetic training data: Use the LLM (Ollama) one last time to generate 10-20 distinct questions for each major Accounting Standard based on the parsed XML.
-    3.  Manually review and clean the dataset to ensure ground truth.
+    1.  [x] Create a CSV schema: `text`, `label` (e.g., "STD:IAS 16", "OFF_TOPIC").
+    2.  [x] Implement multi-style synthetic data generator (Formal, Layperson, Keyword, Edge Case).
+    3.  [ ] Run full generation for all 40+ standards (currently active/partial).
+    4.  [ ] Manually review and clean the dataset to ensure ground truth.
 
-### Phase 4: Training the SetFit Router (New)
+### Phase 4: Training the SetFit Router (Ready)
 * **Goal:** Train a small, fast model to route queries to the correct standard or reject them.
 * **Steps:**
-    1.  Install `setfit` and `sentence-transformers`.
-    2.  Train a SetFit model on the dataset from Phase 3.
-    3.  Evaluate accuracy on a hold-out test set.
-    4.  Save the model locally (`models/setfit_router`).
+    1.  [x] Install `setfit` and `sentence-transformers`.
+    2.  [x] Create training script `train_setfit.py`.
+    3.  [ ] Train a SetFit model on the dataset from Phase 3.
+    4.  [ ] Evaluate accuracy on a hold-out test set.
+    5.  [ ] Save the model locally (`models/setfit_router`).
 
 ### Phase 5: Implementing the Cross-Encoder Reranker (New)
 * **Goal:** Filter the top 20 ChromaDB results down to the "Gold Standard" answer.
@@ -77,15 +79,16 @@ We are building a specialized, privacy-first AI assistant for accountants to ans
 ---
 ## Progress Log
 
-### 2026-02-01 [Strategic Pivot]
+### 2026-02-01 [Strategic Pivot & Dataset Engineering]
 * **Decision:** Shifted strategy from Generative RAG to **Neural Information Retrieval**.
-* **Reasoning:** Generative models proved too unstable for strict legal/accounting compliance (hallucination risk, formatting inconsistency).
 * **Action:**
-    * Defined new architecture: SetFit Router + Cross-Encoder Reranking.
-    * Deprecated "Chatbot" persona in favor of "Intelligent Search" persona.
-    * Added Phases 3-6 to build the discriminative model pipeline.
+    * **Dataset Engineering:** Implemented `generate_dataset.py` with multi-style prompting (Formal, Layperson, Keyword, Edge Case) to ensure high diversity for the SetFit Router.
+    * **Off-Topic Handling:** Implemented `generate_off_topic.py` to create negative samples (Sports, Weather, etc.) for query rejection.
+    * **Environment Setup:** Installed `setfit` and `sentence-transformers` via `uv`.
+    * **Training Pipeline:** Created `src/accountant_helper/training/train_setfit.py` for automated fine-tuning of the multilingual MiniLM model.
+    * **Unique Standards:** Identified and targeted 40+ specific IAS/IFRS standards for classification.
 
-### 2026-02-01
+### 2026-02-01 (Earlier)
 * **Feature: Reference-Only Citation Injection (Completed):**
     * Successfully implemented logic where LLM outputs `[[REF:ID]]` and Python injects text.
     * *Note:* This logic remains useful for the "Snippet Display" in the new Search UI.

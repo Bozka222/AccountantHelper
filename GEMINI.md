@@ -59,33 +59,51 @@ We are building a specialized, privacy-first AI assistant for accountants to ans
     *   `count_standards`: Reports database size.
     *   `get_citation`: Targeted citation lookup using standard names and paragraph numbers.
 
-### Phase 4: UI & Testing
+### Phase 4: UI & Core Refinement
 *   [x] **Connect Claude Desktop:** Configured via `CLAUDE_CONFIG.json`.
 *   [x] **Build Streamlit App:** Local RAG interface implemented in `src/accountant_helper/ui/app.py`.
-*   [ ] **Testing & Quality Assurance:**
-    *   [ ] **Unit Tests:** Implement comprehensive unit tests for tools and data pipeline logic.
-    *   [ ] **Integration Tests:** End-to-end testing of the RAG pipeline with Ollama.
-    *   [ ] **Prompt Engineering:** Refine and upgrade the master prompt for the `llama` family of models to improve Czech reasoning.
+*   [x] **Citation Injection:** Implemented "Reference-Only" injection.
+*   [x] **Unique Citation IDs:** Resolved ID collisions between Regulation articles and Standard paragraphs by implementing prefixed IDs (e.g., `REG:5`, `STD:IAS 23:5`).
+*   [x] **Prompt Engineering:** Refined and upgraded the master prompt for the `llama` family of models to improve Czech reasoning and citation accuracy.
 
 ### Phase 5: Future Enhancements
-*   [ ] **Data Quality:** Fix XML text spacing and formatting issues in the ingestion pipeline.
+*   [x] **Data Quality:** Fixed XML text spacing and formatting issues in the ingestion pipeline.
 *   [ ] **UI Upgrades:** Implement chat history persistence in the Streamlit interface.
 *   [ ] **Infrastructure:**
     *   [ ] **Dockerization:** Create a Dockerized version for consistent local deployment.
     *   [ ] **Deployment Research:** Investigate strategies for "Private Cloud" or secure local server deployment for accounting firms.
 
+### Phase 6: Testing & Quality Assurance (Final Phase)
+*   [ ] **Unit Tests:** Implement comprehensive unit tests for tools and data pipeline logic.
+*   [ ] **Integration Tests:** End-to-end testing of the RAG pipeline with Ollama.
+
 ---
 ## Progress Log
 
+### 2026-02-01
+*   **Feature: Unique Reference IDs & Collision Fix:**
+    *   **Issue:** Collisions between "Článek 5" of the Regulation and "Odstavec 5" of specific Standards.
+    *   **Fix:** Refactored `parser.py` to generate unique `ref_id` strings (e.g., `REG:5` for Regulation, `STD:IAS 23:5` for Standards).
+    *   **Cleanup:** Implemented automatic abbreviation of standard names (e.g., "MEZINÁRODNÍ ÚČETNÍ STANDARD 1" -> "IAS 1").
+    *   **LLM Context:** Updated `cleaner.py` to inject `[SOURCE_ID: ...]` directly into the context passed to the LLM.
+    *   **Robust Retrieval:** Updated `citation.py` to perform exact metadata lookups on the new `ref_id` field.
+*   **Feature: Reference-Only Citation Injection:**
+    *   **Goal:** Eliminate legal hallucinations by preventing the LLM from writing citation text.
+    *   **Implementation:** LLM now outputs `[[REF:ID]]` tags. Python backend (Streamlit) scans for these tags and injects verbatim text from ChromaDB using a new `get_verbatim_article` tool.
+    *   **Metadata Upgrade:** Updated `parser.py` and `cleaner.py` to extract and index `article_number` (e.g., "Článek 5").
+    *   **Database Refresh:** Successfully re-ingested 10.7k items with the new metadata schema.
+    *   **UI Update:** Added professional CSS styling for injected citations using a dedicated `citation-box` info block.
+
+### 2026-02-01
+*   **Citation & Formatting Fixes:**
+    *   **Robust Citation Retrieval:** Fixed `IndexError: list index out of range` in `get_verbatim_text` by adding robust checks for empty result sets from ChromaDB.
+    *   **Context Injection Fix:** Updated `search_accounting_standards` to explicitly include `[SOURCE_ID: ref_id]` in the context returned to the LLM.
+    *   **XML Parser Spacing:** Improved `parser.py` to preserve spaces between XML elements using `get_text_with_spaces`.
+    *   **Citation Cleaning:** Modified `get_verbatim_text` to automatically strip leading paragraph/article numbers (e.g., "14 ", "Článek 5 ") from the verbatim text, as they are already shown in the citation header.
+    *   **UI De-duplication:** Refined the master prompt in `app.py` to ensure `[[REF:ID]]` tags appear only in the "Doslovná citace" section, keeping the main "Odpověď" section clean and readable.
+    *   **Data Refresh:** Re-parsed and re-ingested the entire database (10,779 records) to apply all formatting improvements.
+
 ### 2026-01-31
-*   **MCP Server Refactoring & New Tools:**
-    *   **Modular Refactor:** Restructured the MCP server into a package (`src/accountant_helper/mcp`) with subdirectories for `tools` and `utils`.
-    *   **Citation Tool:** Added `get_citation` which supports metadata filtering (e.g., specific paragraph numbers) to improve RAG precision.
-    *   **Stats Tool:** Added `count_standards` to monitor the vector database size (currently 10,779 items).
-    *   **Bug Fixes:** Resolved a set-dictionary hashability error in the calculation tool and corrected import paths across modular tools.
-    *   **Verification:** All tools (search, calculate, stats, citation) verified via `test_mcp_refactor.py`.
-*   **Vector Store & Path Handling:**
-    *   (Existing entries...)
 
 ### 2026-01-18
 *   **Environment:** Initialized with `uv`. Dependencies: `requests`, `lxml`.

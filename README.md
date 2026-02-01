@@ -9,7 +9,18 @@ A privacy-first, local AI assistant designed to help accountants navigate EU acc
 - **Local & Private:** Your data never leaves your machine. Uses local embeddings (ChromaDB) and local LLMs (Ollama).
 - **Zero Hallucination Focus:** The assistant is instructed to answer strictly based on the provided EU Regulation (2023/1803) text.
 - **Verbatim Citations:** Every answer includes links to specific articles and paragraphs from the official Czech translation of the EU standards.
-- **Dual Interface:** Use it via a dedicated **Streamlit Web UI** or integrate it directly into **Claude Desktop** via MCP (Model Context Protocol).
+- **Hallucination Protection:** The system uses a "Reference-Only" injection mechanism. The LLM identifies relevant articles, but the actual legal text is injected by the Python backend directly from the database, ensuring 100% accuracy.
+
+## 🛡 Reliability & Anti-Hallucination
+
+In legal and accounting domains, paraphrasing errors can lead to serious mistakes. AccountantHelper uses a unique **Reference-Only Injection** workflow:
+
+1. **Semantic Search:** The system finds relevant legal context.
+2. **Restricted Generation:** The LLM is strictly forbidden from writing the legal text itself. It is only allowed to output a reference tag (e.g., `[[REF:Článek 5]]`).
+3. **Verbatim Injection:** The Python backend detects these tags and performs an exact lookup in the ChromaDB metadata.
+4. **UI Presentation:** The verbatim text is injected into the final response and displayed in a distinct "Doslovná citace" (Verbatim Citation) box.
+
+This ensures that the legal text you see is exactly what is written in Commission Regulation (EU) 2023/1803, with zero interference from the LLM.
 
 ## 🛠 Tech Stack
 

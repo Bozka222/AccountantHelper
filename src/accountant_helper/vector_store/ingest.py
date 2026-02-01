@@ -19,9 +19,15 @@ def ingest():
         data = json.load(f)
 
     # Initialize Chroma Client
-    # Persistent storage
     client = chromadb.PersistentClient(path=CHROMA_DB_PATH)
     
+    # Delete existing collection if it exists to ensure metadata updates are applied
+    try:
+        client.delete_collection(COLLECTION_NAME)
+        print(f"Deleted existing collection '{COLLECTION_NAME}'.")
+    except Exception:
+        print(f"Collection '{COLLECTION_NAME}' does not exist, creating new one.")
+
     # Use a multilingual embedding model
     # paraphrase-multilingual-MiniLM-L12-v2 is good for Czech and relatively light
     model_name = "paraphrase-multilingual-MiniLM-L12-v2"

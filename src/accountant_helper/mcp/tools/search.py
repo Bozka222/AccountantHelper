@@ -19,11 +19,12 @@ def search_accounting_standards(query: str, n_results: int = 3) -> str:
         output = []
         for i in range(len(results['ids'][0])):
             meta = results['metadatas'][0][i]
+            ref_id = meta.get('ref_id', 'UNKNOWN')
             hierarchy = meta.get('hierarchy_str', 'Unknown Source')
             content = meta.get('content_verbatim', 'No content available')
             distance = results['distances'][0][i] if 'distances' in results else 0
             
-            output.append(f"--- CITATION: {hierarchy} (Relevance Score: {1-distance:.4f}) ---\n{content}\n")
+            output.append(f"--- CITATION: {hierarchy} (Relevance Score: {1-distance:.4f}) ---\n[SOURCE_ID: {ref_id}]\n{content}\n")
         
         return "\n".join(output)
     except Exception as e:

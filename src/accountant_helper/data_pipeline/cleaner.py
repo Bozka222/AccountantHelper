@@ -61,13 +61,16 @@ def process_data(input_path, output_path):
                     content = f"{heading} {body}"
 
         # 3. Create 'text_to_embed'
-        # Context: Hierarchy + Content
+        # Context: ID + Hierarchy + Content
+        ref_id = item.get('metadata', {}).get('ref_id', '')
         hierarchy = item.get('metadata', {}).get('hierarchy', [])
         # Filter out generic titles like "PŘÍLOHA" if desired, but they add context.
         # Join with " > "
         context_str = " > ".join([clean_text(h) for h in hierarchy])
         
-        text_to_embed = f"{context_str}\n{content}"
+        # Adding Reference ID explicitly to the top of the embed text
+        # This helps the LLM pick it up for [[REF:ID]] output.
+        text_to_embed = f"[SOURCE_ID: {ref_id}]\n{context_str}\n{content}"
         
         # Update Item
         item['content'] = content

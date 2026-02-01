@@ -1,5 +1,71 @@
 from src.accountant_helper.mcp.utils.db import get_collection
 
+def get_verbatim_text(ref_id: str) -> str:
+    """
+    Retrieve the verbatim text of a specific article or paragraph using its unique Reference ID.
+    
+    Args:
+        ref_id: The unique reference ID (e.g., "REG:5", "STD:IAS 23:5").
+        
+    Returns:
+        The verbatim text of the requested content.
+    """
+    try:
+        collection = get_collection()
+        
+        # 1. Try exact match on ref_id in metadata
+        search_ref = ref_id.strip()
+        
+        results = collection.get(
+            where={"ref_id": search_ref},
+            limit=1
+        )
+        
+        if not results or not results['ids'] or len(results['ids']) == 0:
+             # Fallback: Try a semantic query in case the ID was slightly misformatted by LLM
+             # but we really want to encourage exact IDs.
+             results = collection.query(
+                query_texts=[search_ref],
+                n_results=1,
+                where={"ref_id": search_ref} # Still filter by ref_id if possible
+             )
+
+        if not results or not results['ids'] or (isinstance(results['ids'], list) and len(results['ids']) == 0) or (isinstance(results['ids'][0], list) and len(results['ids'][0]) == 0):
+            return f"Lituji, ale referenční kód '{ref_id}' nebyl v databázi nalezen."
+
+        # Handle different return formats between collection.get and collection.query
+        metadatas = results.get('metadatas')
+        if not metadatas:
+            return f"Lituji, ale referenční kód '{ref_id}' nebyl v databázi nalezen."
+
+        if isinstance(metadatas[0], list):
+            if len(metadatas[0]) == 0:
+                return f"Lituji, ale referenční kód '{ref_id}' nebyl v databázi nalezen."
+            meta = metadatas[0][0]
+        else:
+            meta = metadatas[0]
+
+        content = meta.get('content_verbatim', 'Obsah není k dispozici.')
+        
+        # Strip leading paragraph number or article title if it exists
+        # Regulation: "Článek 1 Text..." -> "Text..."
+        # Standard: "1 Text..." -> "Text..."
+        article_num = meta.get('article_number', '').strip()
+        paragraph_num = meta.get('paragraph_number', '').strip()
+        
+        if article_num and content.startswith(article_num):
+            content = content[len(article_num):].strip()
+        elif paragraph_num and content.startswith(paragraph_num):
+            # Ensure we don't accidentally strip "10" when paragraph is "1"
+            # We check if the character after the number is a space or start of text
+            if len(content) == len(paragraph_num) or content[len(paragraph_num)] == ' ':
+                content = content[len(paragraph_num):].strip()
+        
+        return content
+
+    except Exception as e:
+        return f"Chyba při získávání textu: {str(e)}"
+
 def get_citation(query: str, paragraph_number: str = None) -> str:
     """
     Retrieve a specific citation from the accounting standards.

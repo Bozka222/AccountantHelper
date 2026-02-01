@@ -11,6 +11,8 @@ if project_root not in sys.path:
 from src.accountant_helper.mcp.utils.db import get_collection
 from src.accountant_helper.mcp.tools.search import search_accounting_standards
 from src.accountant_helper.mcp.tools.stats import count_standards
+from src.accountant_helper.mcp.tools.citation import get_verbatim_text
+import re
 
 st.set_page_config(
     page_title="Účetní asistent - EU Accounting AI Assistant",
@@ -43,11 +45,26 @@ st.subheader("Místní asistent pro EU účetní standardy (IAS/IFRS)")
 # Sidebar
 with st.sidebar:
     st.header("O aplikaci")
-    st.info("Tato aplikace využívá RAG (Retrieval-Augmented Generation) pro poskytování přesných odpovědí na základě nařízení Komise (EU) 2023/1803.")
+    st.markdown("""
+    **Soukromí na prvním místě** 🔒
+    Tento asistent běží plně lokálně. Vaše data ani dotazy neopouštějí tento počítač.
+
+    **Základní principy:**
+    - **Nulová halucinace:** AI necituje text z paměti, ale vkládá jej přímo z ověřené databáze.
+    - **Verifikovatelnost:** Každé tvrzení je doloženo doslovnou citací z právního předpisu.
+    - **Aktuálnost:** Čerpá z konsolidovaného znění nařízení **[ (EU) 2023/1803](https://eur-lex.europa.eu/legal-content/CS/TXT/?uri=CELEX%3A02023R1803-20240430)**.
+    """)
+
+    with st.expander("Technické detaily"):
+        st.write("""
+        - **Model:** Llama 3.2 (přes Ollama)
+        - **Vektorová databáze:** ChromaDB
+        - **RAG:** Sémantické vyhledávání v 10 700+ paragrafech.
+        """)
     
     try:
         stats = count_standards()
-        st.metric("Počet záznamů v databázi", stats["total_records"])
+        st.metric("Počet záznamů v databázi", f"{stats['total_records']:,}".replace(",", " "))
     except Exception:
         st.warning("Nepodařilo se načíst statistiky databáze.")
 
@@ -65,7 +82,38 @@ if "messages" not in st.session_state:
 # Display chat messages
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+        st.markdown(message["content"], unsafe_allow_html=True)
+
+def inject_verbatim_citations(llm_output):
+    """
+    Identifies [[REF:ID]] tags in LLM output and replaces them with verbatim text from the database.
+    """
+    ref_pattern = r"\[\[REF:([^\]]+)\]\]"
+    matches = re.finditer(ref_pattern, llm_output)
+    
+    final_output = llm_output
+    injected_refs = []
+    
+    for match in matches:
+        ref_tag = match.group(0)
+        ref_id = match.group(1)
+        
+        # Fetch verbatim text
+        verbatim_text = get_verbatim_text(ref_id)
+        
+        # Format for UI
+        formatted_citation = f"""
+<div class="citation-box">
+    <b>Doslovná citace ({ref_id}):</b><br>
+    <i>{verbatim_text}</i>
+</div>
+"""
+        
+        # Replace tag
+        final_output = final_output.replace(ref_tag, formatted_citation)
+        injected_refs.append(ref_id)
+        
+    return final_output, injected_refs
 
 # Chat input
 if prompt := st.chat_input("Zadejte svůj dotaz ohledně účetnictví..."):
@@ -80,15 +128,36 @@ if prompt := st.chat_input("Zadejte svůj dotaz ohledně účetnictví..."):
         message_placeholder.markdown("🔍 Prohledávám standardy...")
         
         # 1. Search for relevant context
-        context = search_accounting_standards(prompt, n_results=3)
+        raw_results = search_accounting_standards(prompt, n_results=5)
         
-        # 2. Construct RAG prompt
-        rag_prompt = f"""Jste odborný asistent pro EU účetní standardy. Odpovídejte v češtině.
-Použijte POUZE následující kontext k zodpovězení dotazu. Pokud kontext neobsahuje odpověď, řekněte, že nevíte.
-Vždy citujte konkrétní články nebo odstavce.
+        # 2. Construct RAG prompt with the refined master prompt
+        master_prompt = f"""Jste špičkový expert na evropské účetní standardy (zejména nařízení 2023/1803).
+Vaším úkolem je poskytovat přesné, právně podložené odpovědi v češtině.
 
+STRIKTNÍ PRAVIDLA PRO CITACE:
+1. Odpovídejte POUZE na základě poskytnutého KONTEXTU. 
+2. V sekci '### 1. Odpověď' uveďte srozumitelný výklad v češtině. ZDE NEPOUŽÍVEJTE značky [[REF:SOURCE_ID]].
+3. Všechny relevantní značky [[REF:SOURCE_ID]] uveďte VÝHRADNĚ v sekci '### 2. Doslovná citace ze zdroje'. Každou citaci uveďte na samostatném řádku.
+4. SOURCE_ID naleznete v KONTEXTU u každého úryvku označené jako [SOURCE_ID: ...].
+   - Příklad: Pokud vidíte [SOURCE_ID: STD:IAS 23:5], použijte přesně [[REF:STD:IAS 23:5]].
+5. NIKDY si SOURCE_ID nevymýšlejte ani neupravujte. Nepřidávejte k nim žádný text ani popisky uvnitř značek.
+6. Pokud v kontextu chybí odpověď, poctivě přiznejte: "Lituji, ale v mých podkladech jsem tuto informaci nenalezl."
+
+STRUKTURA ODPOVĚDI:
+
+### 1. Odpověď
+(Váš výklad v češtině.)
+
+### 2. Doslovná citace ze zdroje
+[[REF:SOURCE_ID_1]]
+[[REF:SOURCE_ID_2]]
+
+### 3. Související články a normy
+(Seznam ID, např. STD:IAS 23:1, REG:5, bez dalšího doprovodného textu.)
+
+---
 KONTEXT:
-{context}
+{raw_results}
 
 DOTAZ:
 {prompt}
@@ -101,19 +170,22 @@ ODPOVĚĎ:"""
             # 3. Call Ollama
             response = ollama.chat(
                 model=model_name,
-                messages=[{'role': 'user', 'content': rag_prompt}],
+                messages=[{'role': 'user', 'content': master_prompt}],
                 stream=True,
             )
             
             for chunk in response:
                 full_response += chunk['message']['content']
-                message_placeholder.markdown(full_response + "▌")
+                message_placeholder.markdown(full_response + "▌", unsafe_allow_html=True)
             
-            message_placeholder.markdown(full_response)
-            
+            # 4. Injection Step
+            final_response, refs = inject_verbatim_citations(full_response)
+            message_placeholder.markdown(final_response, unsafe_allow_html=True)
+            full_response = final_response # For history
+
             # Show citations in an expander
-            with st.expander("Použité zdroje a citace"):
-                st.markdown(context)
+            with st.expander("Použité zdroje a citace (Kontext pro RAG)"):
+                st.markdown(raw_results)
                 
         except Exception as e:
             error_msg = f"Chyba při komunikaci s Ollama: {str(e)}"
